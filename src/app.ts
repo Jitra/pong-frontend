@@ -2,50 +2,10 @@ import { io } from "socket.io-client";
 import P5 from "p5";
 import "p5/lib/addons/p5.dom";
 import "./styles.scss";
-import { IPongView } from "./types";
-
-const players: HTMLDivElement = document.querySelector("#players");
-const name: HTMLInputElement = document.querySelector(
-  "input[name=player_name]"
-);
+import { IPongView, Pong } from "./types";
 
 let game: IPongView;
-
-const socket = io("https://7oz8uf-3000.preview.csb.app/");
-socket.on("connect", async () => {
-  console.log("connection established");
-});
-socket.on("reconnect", () => {
-  console.log("reconnecting...");
-  socket.emit("pong.join", name.value);
-});
-socket.on("pong.cast", (data: IPongView) => {
-  game = data;
-});
-socket.on("pong.members", (members) => {
-  console.log("members", members);
-  if (members.length === 0) {
-    game = null;
-  }
-  players.innerHTML = members
-    .map((m) => {
-      const style =
-        m.id === socket.id ? ' style="font-weight: bold; color: red" ' : "";
-      return `<p ${style}>${m.name}</p>`;
-    })
-    .join("\n");
-});
-
-const joinBtn: HTMLButtonElement = document.querySelector("#join");
-joinBtn.addEventListener("click", () => {
-  if (!name.value) {
-    console.error("Please enter your name");
-  } else {
-    socket.emit("pong.join", name.value);
-    name.setAttribute("readonly", "true");
-    joinBtn.setAttribute("disabled", "true");
-  }
-});
+let pong = new Pong(600, 400, { id: "1" }, { id: "2" });
 
 // Creating the sketch itself
 const sketch = (p5: P5) => {
@@ -54,25 +14,23 @@ const sketch = (p5: P5) => {
     const canvas = p5.createCanvas(600, 400);
     canvas.parent("app");
     p5.background("black");
+
+    setInterval(() => {
+      pong.update();
+      game = pong.show();
+    }, 15);
   };
 
   p5.draw = () => {
     p5.background(0);
     if (game) {
       // left paddle
-      if (game.left.player.id === socket.id) {
-        p5.fill(...([128, 0, 0] as const));
-      } else {
-        p5.fill(...game.left.fill);
-      }
+      p5.fill(...([128, 0, 0] as const));
       p5.rectMode(game.left.rectMode);
       p5.rect(...game.left.rect);
       // right paddle
-      if (game.right.player.id === socket.id) {
-        p5.fill(...([128, 0, 0] as const));
-      } else {
-        p5.fill(...game.right.fill);
-      }
+      p5.fill(...game.right.fill);
+      // }
       p5.rectMode(game.right.rectMode);
       p5.rect(...game.right.rect);
       // puck
@@ -87,20 +45,43 @@ const sketch = (p5: P5) => {
   };
 
   p5.keyReleased = () => {
-    if (
-      game &&
-      (game.left.player.id === socket.id || game.right.player.id === socket.id)
-    ) {
-      socket.emit("pong.move", null);
+    if (!pong) {
+      return;
+    }
+    const paddleLeft = pong.player("1");
+    const paddleRight = pong.player("2");
+
+    switch (p5.key) {
+      case "ArrowUp":
+      case "ArrowDown":
+        paddleRight.move(0);
+        break;
+      case "w":
+      case "s":
+        paddleLeft.move(0);
+        break;
     }
   };
   p5.keyPressed = () => {
-    if (
-      game &&
-      ["ArrowUp", "ArrowDown"].includes(p5.key) &&
-      (game.left.player.id === socket.id || game.right.player.id === socket.id)
-    ) {
-      socket.emit("pong.move", p5.key);
+    if (!pong) {
+      return;
+    }
+    const paddleLeft = pong.player("1");
+    const paddleRight = pong.player("2");
+
+    switch (p5.key) {
+      case "ArrowUp":
+        paddleRight.move(-10);
+        break;
+      case "ArrowDown":
+        paddleRight.move(10);
+        break;
+      case "w":
+        paddleLeft.move(-10);
+        break;
+      case "s":
+        paddleLeft.move(10);
+        break;
     }
   };
 };
