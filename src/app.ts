@@ -13,11 +13,22 @@ const inputPlayerName: HTMLInputElement =
   document.querySelector("#player-name");
 const btn = document.querySelector("#send-msg");
 const btnJoin = document.querySelector("#join-btn");
+const playerList = document.querySelector("#player-list");
 console.log("messages", messages);
 const socket = io("https://psxtv0-3000.preview.csb.app/");
 socket.on("connect", () => console.log("connected"));
 socket.on("chat-message", (msg) => {
   messages.innerHTML += `<p style="text-align: right;">${msg}</p>`;
+});
+socket.on("pong.members", (members) => {
+  playerList.innerHTML = members
+    .map(
+      (member: { id: string; name: string }) =>
+        `<p ${member.id === socket.id ? 'style="color:red;"' : ""}>
+        ${member.name}
+        </p>`
+    )
+    .join("");
 });
 
 input.addEventListener("keydown", (e) => {
